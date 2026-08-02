@@ -1,0 +1,132 @@
+name: SecurePulse Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    name: SAST + DAST + SCA
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout code ────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Setup Node (for Dependency-Check + app) ──
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 3. SAST — Semgrep ───────────────────────────
+      - name: Run Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/javascript
+            p/nodejs
+            p/owasp-top-ten
+            p/secrets
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        continue-on-error: true
+
+      - name: Export Semgrep results as JSON
+        run: |
+          semgrep scan \
+            --config p/javascript \
+            --config p/nodejs \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --json \
+            --output semgrep-results.json \
+            --no-git-ignore || true
+        continue-on-error: true
+
+      # ── 4. SCA — OWASP Dependency-Check ─────────────
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: ${{ github.repository }}
+          path: '.'
+          format: 'JSON'
+          out: 'dependency-check-report'
+          args: >
+            --enableRetired
+        continue-on-error: true
+
+      # ── 5. Start app for DAST scan ──────────────────
+      - name: Start application for DAST
+        run: |
+          npm start &
+          sleep 10
+          curl --retry 5 --retry-delay 3 http://localhost:3000/health || true
+        continue-on-error: true
+
+      # ── 6. DAST — OWASP ZAP ─────────────────────────
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:3000'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-J zap-results.json'
+        continue-on-error: true
+
+      # ── 7. Send results to SecurePulse ──────────────
+      - name: Post SAST results to SecurePulse
+        run: |
+          if [ -f semgrep-results.json ]; then
+            curl -s -X POST "${{ secrets.NGROK_URL }}/api/scans/sast" \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${{ secrets.SECUREPULSE_API_KEY }}" \
+              -d @semgrep-results.json || echo "SAST post failed (backend may be offline)"
+          else
+            echo "No Semgrep results file found"
+          fi
+        continue-on-error: true
+
+      - name: Post SCA results to SecurePulse
+        run: |
+          REPORT=$(find dependency-check-report -name "*.json" | head -1)
+          if [ -f "$REPORT" ]; then
+            curl -s -X POST "${{ secrets.NGROK_URL }}/api/scans/sca" \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${{ secrets.SECUREPULSE_API_KEY }}" \
+              -d @"$REPORT" || echo "SCA post failed (backend may be offline)"
+          else
+            echo "No Dependency-Check results file found"
+          fi
+        continue-on-error: true
+
+      - name: Post DAST results to SecurePulse
+        run: |
+          if [ -f zap-results.json ]; then
+            curl -s -X POST "${{ secrets.NGROK_URL }}/api/scans/dast" \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${{ secrets.SECUREPULSE_API_KEY }}" \
+              -d @zap-results.json || echo "DAST post failed (backend may be offline)"
+          else
+            echo "No ZAP results file found"
+          fi
+        continue-on-error: true
+
+      # ── 8. Upload scan artifacts ─────────────────────
+      - name: Upload scan results as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: securepulse-scan-results
+          path: |
+            semgrep-results.json
+            dependency-check-report/
+            zap-results.json
+          retention-days: 30

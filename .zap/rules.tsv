@@ -1,0 +1,48 @@
+# ZAP scan rules configuration
+# Format: rule_id	IGNORE|WARN|FAIL	description
+#
+# IGNORE  = do not report
+# WARN    = report but do not fail the build
+# FAIL    = report and fail the build
+#
+# Start with WARN on everything — tighten to FAIL once baseline is established
+
+10010	WARN	Cookie No HttpOnly Flag
+10011	WARN	Cookie Without Secure Flag
+10015	WARN	Incomplete or No Cache-control Header Set
+10016	WARN	Web Browser XSS Protection Not Enabled
+10017	WARN	Cross-Domain JavaScript Source File Inclusion
+10019	WARN	Content-Type Header Missing
+10020	WARN	X-Frame-Options Header Not Set
+10021	WARN	X-Content-Type-Options Header Missing
+10023	WARN	Information Disclosure - Debug Error Messages
+10024	WARN	Information Disclosure - Sensitive Information in URL
+10025	WARN	Information Disclosure - Sensitive Information in HTTP Referrer Header
+10027	WARN	Information Disclosure - Suspicious Comments
+10036	WARN	Server Leaks Version Information via Server HTTP Response Header Field
+10037	WARN	Server Leaks Information via X-Powered-By HTTP Response Header Field(s)
+10040	FAIL	Secure Pages Include Mixed Content
+10045	FAIL	Source Code Disclosure - /WEB-INF folder
+10054	WARN	Cookie without SameSite Attribute
+10055	WARN	CSP Scanner
+10056	WARN	X-Debug-Token Information Leak
+10057	WARN	Username Hash Found
+10061	WARN	X-AspNet-Version Response Header Scanner
+10063	WARN	Permissions Policy Header Not Set
+10096	WARN	Timestamp Disclosure
+10098	FAIL	Cross-Domain Misconfiguration
+40012	FAIL	Cross Site Scripting (Reflected)
+40014	FAIL	Cross Site Scripting (Persistent)
+40016	FAIL	Cross Site Scripting (Persistent) - Prime
+40017	FAIL	Cross Site Scripting (Persistent) - Spider
+40018	FAIL	SQL Injection
+40019	FAIL	SQL Injection - MySQL
+40020	FAIL	SQL Injection - Hypersonic SQL
+40021	FAIL	SQL Injection - Oracle
+40022	FAIL	SQL Injection - PostgreSQL
+40024	FAIL	SQL Injection - SQLite
+40025	FAIL	Proxy Disclosure
+40026	FAIL	Cross Site Scripting (DOM Based)
+40027	FAIL	SQL Injection - MsSQL
+40028	FAIL	CSRF
+40034	FAIL	Cloud Metadata Potentially Exposed

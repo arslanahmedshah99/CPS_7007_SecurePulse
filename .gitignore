@@ -1,0 +1,74 @@
+# ── Node ──────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# ── Environment variables ──────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# ── Build output ───────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# ── Docker ─────────────────────────────────────────────
+# Keep docker-compose.yml but ignore local override
+docker-compose.override.yml
+
+# ── Database ───────────────────────────────────────────
+*.sql.bak
+pgdata/
+
+# ── Scanner output (local runs) ────────────────────────
+scan-results/
+*.sarif
+zap-report.html
+zap-report.json
+dependency-check-report.*
+semgrep-output.json
+
+# ── OS files ───────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── IDE / Editor ───────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.cursor/
+
+# ── Logs ──────────────────────────────────────────────
+logs/
+*.log
+
+# ── ngrok ─────────────────────────────────────────────
+ngrok.yml
+.ngrok2/
+
+# ── Misc ──────────────────────────────────────────────
+.cache/
+.temp/
+tmp/
+coverage/
