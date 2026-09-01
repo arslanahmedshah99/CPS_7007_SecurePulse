@@ -1,0 +1,16 @@
+{
+  "name": "app1-nodejs-api",
+  "version": "1.0.0",
+  "description": "Deliberately vulnerable Node.js REST API - SecurePulse SAST/SCA scan target",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "4.17.1",
+    "sqlite3": "5.0.2",
+    "lodash": "4.17.15",
+    "axios": "0.21.0",
+    "minimist": "1.2.0"
+  }
+}
