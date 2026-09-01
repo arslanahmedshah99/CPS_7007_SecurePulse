@@ -5,8 +5,8 @@ const initSqlJs = require('sql.js');
 const app = express();
 const PORT = process.env.PORT || 4001;
 
-// Hardcoded secret - deliberately vulnerable, fake key for demo purposes only
-const API_KEY = 'sk_live_51H8fakeDemoKeyDoNotUse00000000';
+// Secret must be provided via environment variable - do not hardcode secrets in source code
+const API_KEY = process.env.API_KEY || '';
 
 let db;
 
@@ -47,9 +47,9 @@ async function start() {
     }
   });
 
-  // Exposes the hardcoded secret - deliberately vulnerable
+  // Config endpoint no longer exposes the secret value itself
   app.get('/api/config', (req, res) => {
-    res.json({ apiKey: API_KEY, service: 'app1-nodejs-api' });
+    res.json({ apiKeyConfigured: Boolean(API_KEY), service: 'app1-nodejs-api' });
   });
 
   app.listen(PORT, '0.0.0.0', () => {
