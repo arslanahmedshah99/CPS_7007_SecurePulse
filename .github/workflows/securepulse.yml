@@ -78,6 +78,7 @@ jobs:
           out: 'dependency-check-report'
           args: >
             --enableRetired
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
         continue-on-error: true
 
       # Start app2 
