@@ -13,21 +13,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Checkout code ────────────────────────────
+      # Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Setup Node (for Dependency-Check + app) ──
+      # Setup Node 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            target-apps/app1-nodejs-api/package-lock.json
+            target-apps/app2-react-node/backend/package-lock.json
+            target-apps/app2-react-node/frontend/package-lock.json
 
-      - name: Install dependencies
+      # Install the target apps
+      - name: Install app1 dependencies
+        working-directory: target-apps/app1-nodejs-api
         run: npm ci
 
-      # ── 3. SAST — Semgrep ───────────────────────────
+      - name: Install app2 backend dependencies
+        working-directory: target-apps/app2-react-node/backend
+        run: npm ci
+
+      - name: Install app2 frontend dependencies
+        working-directory: target-apps/app2-react-node/frontend
+        run: npm ci
+
+      # Run SAST
       - name: Run Semgrep SAST
         uses: semgrep/semgrep-action@v1
         with:
@@ -52,7 +68,7 @@ jobs:
             --no-git-ignore || true
         continue-on-error: true
 
-      # ── 4. SCA — OWASP Dependency-Check ─────────────
+      # Run SCA
       - name: Run OWASP Dependency-Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
@@ -64,24 +80,34 @@ jobs:
             --enableRetired
         continue-on-error: true
 
-      # ── 5. Start app for DAST scan ──────────────────
-      - name: Start application for DAST
-        run: |
-          npm start &
-          sleep 10
-          curl --retry 5 --retry-delay 3 http://localhost:3000/health || true
+      # Start app2 
+      - name: Start app2 backend
+        working-directory: target-apps/app2-react-node/backend
+        run: nohup npm start > /tmp/app2-backend.log 2>&1 &
         continue-on-error: true
 
-      # ── 6. DAST — OWASP ZAP ─────────────────────────
+      - name: Start app2 frontend
+        working-directory: target-apps/app2-react-node/frontend
+        run: nohup npm run dev -- --host 0.0.0.0 --port 4003 > /tmp/app2-frontend.log 2>&1 &
+        continue-on-error: true
+
+      - name: Wait for app2 to be ready
+        run: |
+          sleep 5
+          curl --retry 5 --retry-delay 3 http://localhost:4002/health || true
+          curl --retry 5 --retry-delay 3 http://localhost:4003 || true
+        continue-on-error: true
+
+      # Run DAST
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
-          target: 'http://localhost:3000'
+          target: 'http://localhost:4003'
           rules_file_name: '.zap/rules.tsv'
           cmd_options: '-J zap-results.json'
         continue-on-error: true
 
-      # ── 7. Send results to SecurePulse ──────────────
+      # Send results 
       - name: Post SAST results to SecurePulse
         run: |
           if [ -f semgrep-results.json ]; then
@@ -119,7 +145,7 @@ jobs:
           fi
         continue-on-error: true
 
-      # ── 8. Upload scan artifacts ─────────────────────
+      # Upload scan artifacts
       - name: Upload scan results as artifacts
         uses: actions/upload-artifact@v4
         if: always()
