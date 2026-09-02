@@ -51,4 +51,41 @@ async function generateRemediationForFinding(findingId) {
   return suggestion;
 }
 
-module.exports = { generateRemediationForFinding };
+function stripCodeFence(text) {
+  const fenced = text.match(/^```[a-zA-Z0-9]*\n([\s\S]*?)\n```$/);
+  return fenced ? fenced[1] : text;
+}
+
+async function generateFileFix(filePath, originalContent, findings) {
+  const issues = findings
+    .map((f) => `- [${f.severity}] ${f.title}: ${f.description || ''}${f.line_number ? ` (line ${f.line_number})` : ''}`)
+    .join('\n');
+
+  const prompt = `You are fixing security issues in the file \`${filePath}\`.
+
+Issues to fix:
+${issues}
+
+Current file content:
+\`\`\`
+${originalContent}
+\`\`\`
+
+Return ONLY the complete corrected file content. Do not include markdown code fences, explanations, or commentary - your entire response must be the raw file content that will directly replace this file.`;
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = response.content
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+
+  return stripCodeFence(text);
+}
+
+module.exports = { generateRemediationForFinding, generateFileFix };

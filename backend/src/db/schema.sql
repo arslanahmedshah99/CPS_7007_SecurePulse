@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS remediations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS queued_fixes (
+  id SERIAL PRIMARY KEY,
+  finding_id INTEGER NOT NULL UNIQUE REFERENCES findings(id) ON DELETE CASCADE,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_scan_runs_project_id ON scan_runs(project_id);
 CREATE INDEX IF NOT EXISTS idx_findings_scan_run_id ON findings(scan_run_id);
 CREATE INDEX IF NOT EXISTS idx_findings_severity ON findings(severity);
