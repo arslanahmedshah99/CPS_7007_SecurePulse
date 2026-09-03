@@ -82,23 +82,33 @@ async function createFixPullRequest(findings) {
     byFile.set(finding.file_path, list);
   }
 
+
   const changedFiles = [];
+  const skipped = [];
   for (const [filePath, fileFindings] of byFile) {
-    const { content, sha } = await getFileContent(filePath, branchName);
-    const fixedContent = await remediation.generateFileFix(filePath, content, fileFindings);
-    if (fixedContent.trim() === content.trim()) continue;
-    await updateFileContent(
-      filePath,
-      fixedContent,
-      `fix: ${fileFindings.map((f) => f.title).join(', ')}`,
-      sha,
-      branchName
-    );
-    changedFiles.push({ filePath, findings: fileFindings });
+    try {
+      const { content, sha } = await getFileContent(filePath, branchName);
+      const fixedContent = await remediation.generateFileFix(filePath, content, fileFindings);
+      if (fixedContent.trim() === content.trim()) {
+        skipped.push({ filePath, reason: 'no change produced' });
+        continue;
+      }
+      await updateFileContent(
+        filePath,
+        fixedContent,
+        `fix: ${fileFindings.map((f) => f.title).join(', ')}`,
+        sha,
+        branchName
+      );
+      changedFiles.push({ filePath, findings: fileFindings });
+    } catch (err) {
+      skipped.push({ filePath, reason: err.message });
+    }
   }
 
   if (changedFiles.length === 0) {
-    throw new Error('Claude did not produce any changes for the queued findings');
+    const detail = skipped.map((s) => `${s.filePath} (${s.reason})`).join('; ');
+    throw new Error(`Could not fix any of the queued findings: ${detail}`);
   }
 
   const title = `SecurePulse: fix ${withPath.length} finding${withPath.length === 1 ? '' : 's'}`;
@@ -109,6 +119,9 @@ async function createFixPullRequest(findings) {
       ({ filePath, findings: fileFindings }) =>
         `**${filePath}**\n${fileFindings.map((f) => `- [${f.severity}] ${f.title}`).join('\n')}`
     ),
+    ...(skipped.length > 0
+      ? ['', '**Skipped** (could not be fixed automatically):', ...skipped.map((s) => `- ${s.filePath}: ${s.reason}`)]
+      : []),
   ].join('\n');
 
   return openPullRequest(branchName, baseBranch, title, body);

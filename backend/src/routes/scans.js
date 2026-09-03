@@ -124,6 +124,15 @@ function mapDependencyCheckSeverity(severity) {
   return 'medium';
 }
 
+function sanitizeScaFilePath(filePath) {
+  if (!filePath) return null;
+  let path = filePath.split('?')[0];
+  path = path.replace(/^\/?repo\//, '').replace(/^\/?src\//, '');
+  if (path.endsWith('package-lock.json')) {
+    path = path.replace(/package-lock\.json$/, 'package.json');
+  }
+  return path || null;
+}
 function parseDependencyCheckResults(body) {
   const dependencies = Array.isArray(body.dependencies) ? body.dependencies : [];
   const findings = [];
@@ -134,7 +143,7 @@ function parseDependencyCheckResults(body) {
         severity: mapDependencyCheckSeverity(vuln.severity),
         title: vuln.name || 'Dependency vulnerability',
         description: vuln.description || '',
-        filePath: dep.filePath || dep.fileName || null,
+        filePath: sanitizeScaFilePath(dep.filePath || dep.fileName),
         lineNumber: null,
         ruleId: null,
         cveId: vuln.name && vuln.name.startsWith('CVE') ? vuln.name : null,
