@@ -62,13 +62,19 @@ async function openPullRequest(branch, baseBranch, title, body) {
   return pr.html_url;
 }
 
+function isFixableFilePath(path) {
+  return Boolean(path) && !/^https?:\/\//i.test(path);
+}
+
 async function createFixPullRequest(findings) {
   if (!TOKEN || !OWNER || !REPO) {
     throw new Error('GitHub integration is not configured (GITHUB_TOKEN / GITHUB_OWNER / GITHUB_REPO missing)');
   }
-  const withPath = findings.filter((f) => f.file_path);
+  const withPath = findings.filter((f) => isFixableFilePath(f.file_path));
   if (withPath.length === 0) {
-    throw new Error('None of the queued findings have a file path to fix');
+    throw new Error(
+      'None of the queued findings have a fixable file path (DAST findings point at a URL, not a file, so they can\'t be turned into a code fix)'
+    );
   }
 
   const { branch: baseBranch, sha: baseSha } = await getDefaultBranchSha();

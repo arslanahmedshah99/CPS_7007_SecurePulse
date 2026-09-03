@@ -31,6 +31,10 @@ function ScannerBadge({ scannerType }) {
   );
 }
 
+function isFixableFilePath(path) {
+  return Boolean(path) && !/^https?:\/\//i.test(path);
+}
+
 function Spinner() {
   return <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-muted/25 border-t-series-blue align-[-2px]" />;
 }
@@ -144,20 +148,26 @@ function FindingRow({ finding, expanded, loading, error, remediation, queued, on
             {!loading && !error && remediation && (
               <>
                 <RemediationMarkdown>{remediation}</RemediationMarkdown>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    queued ? onRemoveFromQueue() : onAddToQueue();
-                  }}
-                  className={`mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    queued
-                      ? 'bg-status-good/10 text-status-good ring-1 ring-inset ring-status-good/25'
-                      : 'bg-series-blue text-white hover:bg-series-blue-dark'
-                  }`}
-                >
-                  {queued ? <CheckIcon size={13} /> : <PlusIcon size={13} />}
-                  {queued ? 'In fix queue' : 'Add to fix queue'}
-                </button>
+                {isFixableFilePath(finding.file_path) ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      queued ? onRemoveFromQueue() : onAddToQueue();
+                    }}
+                    className={`mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      queued
+                        ? 'bg-status-good/10 text-status-good ring-1 ring-inset ring-status-good/25'
+                        : 'bg-series-blue text-white hover:bg-series-blue-dark'
+                    }`}
+                  >
+                    {queued ? <CheckIcon size={13} /> : <PlusIcon size={13} />}
+                    {queued ? 'In fix queue' : 'Add to fix queue'}
+                  </button>
+                ) : (
+                  <p className="mt-3 text-xs text-ink-muted">
+                    No single file to fix automatically - {finding.scanner_type === 'dast' ? 'this points at a scanned URL, not a source file' : 'no file path was reported for this finding'}.
+                  </p>
+                )}
               </>
             )}
           </td>
